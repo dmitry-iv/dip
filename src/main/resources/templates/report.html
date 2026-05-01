@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::section})}">
+<section>
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h2 class="h4 mb-0">Демо-отчёт</h2>
+        <span class="badge text-bg-secondary">Read-only</span>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Состояние ИБ</h5>
+                    <p class="text-muted mb-0">Демонстрационная страница для проверки разграничения доступа (RBAC).</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Меры</h5>
+                    <ul class="mb-0">
+                        <li>Аутентификация + политика паролей</li>
+                        <li>Блокировки после неудачных попыток</li>
+                        <li>Ролевой доступ</li>
+                        <li>Аудит событий</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+</html>

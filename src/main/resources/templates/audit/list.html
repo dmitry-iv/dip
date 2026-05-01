@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::section})}">
+<section>
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h2 class="h4 mb-0">Журнал аудита</h2>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <form method="get" th:action="@{/audit}" class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Actor</label>
+                    <input class="form-control" name="actor" th:value="${actor}" placeholder="admin" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Action</label>
+                    <input class="form-control" name="action" th:value="${action}" placeholder="LOGIN_SUCCESS" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">From (ISO)</label>
+                    <input class="form-control" name="from" th:value="${from}" placeholder="2026-02-27T00:00:00Z" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">To (ISO)</label>
+                    <input class="form-control" name="to" th:value="${to}" placeholder="2026-02-28T00:00:00Z" />
+                </div>
+                <div class="col-12">
+                    <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i> Поиск</button>
+                    <a class="btn btn-outline-secondary" th:href="@{/audit}">Сброс</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                <tr>
+                    <th>TS</th>
+                    <th>Actor</th>
+                    <th>Roles</th>
+                    <th>Action</th>
+                    <th>Result</th>
+                    <th>Entity</th>
+                    <th>IP</th>
+                    <th>Details</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="l : ${logs.content}">
+                    <td class="text-nowrap" th:text="${l.timestamp}">ts</td>
+                    <td th:text="${l.actorUsername} ?: '-'">actor</td>
+                    <td class="text-muted" th:text="${l.actorRoles} ?: '-'">roles</td>
+                    <td>
+                        <span class="badge text-bg-dark" th:text="${l.action}">ACTION</span>
+                    </td>
+                    <td>
+                        <span th:class="${l.result == 'SUCCESS'} ? 'badge text-bg-success' : 'badge text-bg-danger'"
+                              th:text="${l.result}">SUCCESS</span>
+                    </td>
+                    <td class="text-nowrap" th:text="${l.entityType != null ? l.entityType + ':' + l.entityId : '-'}">-</td>
+                    <td th:text="${l.ip} ?: '-'">-</td>
+                    <td class="text-muted" th:text="${l.details} ?: '-'">-</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-3">
+        <div class="text-muted small">
+            Страница <span th:text="${logs.number + 1}">1</span> из <span th:text="${logs.totalPages}">1</span>
+        </div>
+        <div class="btn-group">
+            <a class="btn btn-outline-secondary btn-sm" th:classappend="${logs.first}? 'disabled'"
+               th:href="@{/audit(page=${logs.number - 1},actor=${actor},action=${action},from=${from},to=${to})}">Назад</a>
+            <a class="btn btn-outline-secondary btn-sm" th:classappend="${logs.last}? 'disabled'"
+               th:href="@{/audit(page=${logs.number + 1},actor=${actor},action=${action},from=${from},to=${to})}">Вперёд</a>
+        </div>
+    </div>
+</section>
+</html>

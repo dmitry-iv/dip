@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::section})}">
+<section>
+    <div class="p-4 p-md-5 mb-4 rounded-3 bg-white shadow-sm">
+        <div class="container-fluid py-2">
+            <h1 class="display-6">Добро пожаловать!</h1>
+            <p class="lead mb-0">Вы вошли как <span class="fw-semibold" th:text="${username}">user</span>.</p>
+            <p class="text-muted mt-2">Это прототип системы с RBAC, аудитом, политикой паролей и блокировками.</p>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-shield-lock"></i>
+                        <h5 class="card-title mb-0">RBAC</h5>
+                    </div>
+                    <p class="card-text text-muted mt-2">Доступ к разделам ограничен ролями USER / MANAGER / ADMIN.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-journal-text"></i>
+                        <h5 class="card-title mb-0">Аудит</h5>
+                    </div>
+                    <p class="card-text text-muted mt-2">Логируются входы/выходы, ошибки входа, административные действия.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-key"></i>
+                        <h5 class="card-title mb-0">Пароли</h5>
+                    </div>
+                    <p class="card-text text-muted mt-2">Политика сложности и блокировка после 5 неудачных попыток.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+</html>
