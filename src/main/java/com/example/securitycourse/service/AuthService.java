@@ -19,6 +19,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,19 +34,22 @@ public class AuthService {
     private final PasswordPolicyService passwordPolicyService;
     private final JwtService jwtService;
     private final AuditService auditService;
+    private final TotpService totpService;
 
     public AuthService(UserRepository userRepository,
                        RoleRepository roleRepository,
                        PasswordEncoder passwordEncoder,
                        PasswordPolicyService passwordPolicyService,
                        JwtService jwtService,
-                       AuditService auditService) {
+                       AuditService auditService,
+                       TotpService totpService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordPolicyService = passwordPolicyService;
         this.jwtService = jwtService;
         this.auditService = auditService;
+        this.totpService = totpService;
     }
 
     @Transactional
@@ -103,8 +107,15 @@ public class AuthService {
             throw new IllegalArgumentException("Invalid credentials");
         }
 
-        onSuccessfulLoginInternal(user);
+        if (user.isTotpEnabled()) {
+            String tempToken = jwtService.issueTwoFactorToken(user.getId(), user.getUsername());
+            auditService.log(http, user.getId(), user.getUsername(), null,
+                    AuditActions.LOGIN_SUCCESS.name(), AuditResults.SUCCESS.name(),
+                    null, null, "First factor passed, 2FA required");
+            return new AuthResponse(true, tempToken, jwtService.getTtlSeconds());
+        }
 
+        onSuccessfulLoginInternal(user);
         List<String> roles = user.getRoles().stream().map(Role::getName).collect(Collectors.toList());
         String jwt = jwtService.issueToken(user.getId(), user.getUsername(), roles);
 
@@ -116,11 +127,46 @@ public class AuthService {
     }
 
     @Transactional
+    public AuthResponse verifyTwoFactor(String twoFactorToken, String code, boolean isBackupCode, HttpServletRequest http) {
+        UUID userId = jwtService.validateTwoFactorToken(twoFactorToken);
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        boolean valid;
+        if (isBackupCode) {
+            valid = totpService.useBackupCode(user, code);
+            if (valid) {
+                userRepository.save(user);
+            }
+        } else {
+            valid = totpService.verifyCode(user.getTotpSecret(), code);
+        }
+
+        if (!valid) {
+            auditService.log(http, user.getId(), user.getUsername(), null,
+                    AuditActions.LOGIN_FAILURE.name(), AuditResults.FAIL.name(),
+                    null, null, "2FA code invalid");
+            throw new IllegalArgumentException("Invalid verification code");
+        }
+
+        onSuccessfulLoginInternal(user);
+        List<String> roles = user.getRoles().stream().map(Role::getName).collect(Collectors.toList());
+        String jwt = jwtService.issueToken(user.getId(), user.getUsername(), roles);
+
+        auditService.log(http, user.getId(), user.getUsername(), rolesAsAuthoritiesString(roles),
+                AuditActions.LOGIN_SUCCESS.name(), AuditResults.SUCCESS.name(),
+                null, null, "2FA verification successful");
+
+        return new AuthResponse(jwt, jwtService.getTtlSeconds());
+    }
+
+    @Transactional
     public void onFailedLogin(String login) {
         if (login == null || login.isBlank()) {
             return;
         }
-        userRepository.findByUsernameOrEmailIgnoreCase(login.trim()).ifPresent(u -> onFailedLoginInternal(u, Instant.now()));
+        userRepository.findByUsernameOrEmailIgnoreCase(login.trim())
+                .ifPresent(u -> onFailedLoginInternal(u, Instant.now()));
     }
 
     @Transactional
@@ -128,7 +174,8 @@ public class AuthService {
         if (login == null || login.isBlank()) {
             return;
         }
-        userRepository.findByUsernameOrEmailIgnoreCase(login.trim()).ifPresent(this::onSuccessfulLoginInternal);
+        userRepository.findByUsernameOrEmailIgnoreCase(login.trim())
+                .ifPresent(this::onSuccessfulLoginInternal);
     }
 
     private void onFailedLoginInternal(AppUser user, Instant now) {

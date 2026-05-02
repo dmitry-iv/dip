@@ -28,6 +28,9 @@ public class JwtService {
         this.key = Keys.hmacShaKeyFor(bytes);
     }
 
+    /**
+     * Создаёт полноценный JWT (access token) с ролями.
+     */
     public String issueToken(UUID userId, String username, List<String> roles) {
         Instant now = Instant.now();
         Instant exp = now.plusSeconds(props.getTtlSeconds());
@@ -42,12 +45,47 @@ public class JwtService {
                 .compact();
     }
 
+    /**
+     * Создаёт временный токен для незавершённой аутентификации (2FA).
+     * Время жизни фиксировано — 5 минут.
+     */
+    public String issueTwoFactorToken(UUID userId, String username) {
+        Instant now = Instant.now();
+        Instant exp = now.plusSeconds(300); // 5 minutes
+
+        return Jwts.builder()
+                .subject(username)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(exp))
+                .claim("uid", userId.toString())
+                .claim("twofactor", true) // флаг, что это 2FA-токен
+                .signWith(key)
+                .compact();
+    }
+
+    /**
+     * Парсит любой токен и возвращает Claims.
+     */
     public Claims parseClaims(String jwt) {
         return Jwts.parser()
                 .verifyWith(key)
                 .build()
                 .parseSignedClaims(jwt)
                 .getPayload();
+    }
+
+    /**
+     * Проверяет, является ли токен двухфакторным, и возвращает userId.
+     * Если неверный формат или просрочен, выбрасывает исключение.
+     */
+    public UUID validateTwoFactorToken(String jwt) {
+        Claims claims = parseClaims(jwt);
+        Boolean twofactor = claims.get("twofactor", Boolean.class);
+        if (twofactor == null || !twofactor) {
+            throw new IllegalArgumentException("Not a two-factor token");
+        }
+        String uid = claims.get("uid", String.class);
+        return UUID.fromString(uid);
     }
 
     public long getTtlSeconds() {

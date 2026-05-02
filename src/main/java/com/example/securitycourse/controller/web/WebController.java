@@ -40,10 +40,16 @@ public class WebController {
     @GetMapping("/profile")
     public String profile(Model model, Authentication authentication) {
         Object p = authentication.getPrincipal();
-        if (p instanceof AuthPrincipal ap) {
-            AppUser user = userRepository.findById(ap.getUserId()).orElse(null);
-            model.addAttribute("user", user);
+        if (!(p instanceof AuthPrincipal ap)) {
+            return "redirect:/login";
         }
+
+        AppUser user = userRepository.findById(ap.getUserId()).orElse(null);
+        if (user == null) {
+            return "redirect:/login";
+        }
+
+        model.addAttribute("user", user);
         if (!model.containsAttribute("passwordForm")) {
             model.addAttribute("passwordForm", new ChangePasswordForm());
         }

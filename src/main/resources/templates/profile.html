@@ -1,69 +1,35 @@
 <!DOCTYPE html>
-<html lang="ru" xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{fragments/layout :: layout(~{::section})}">
-<section>
-    <div class="d-flex align-items-center justify-content-between mb-3">
-        <h2 class="h4 mb-0">Профиль</h2>
-    </div>
-
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <div th:if="${user == null}" class="text-muted">Не удалось загрузить профиль.</div>
-
-            <div th:if="${user != null}">
-                <dl class="row mb-0">
-                    <dt class="col-sm-3">Username</dt>
-                    <dd class="col-sm-9" th:text="${user.username}">user</dd>
-
-                    <dt class="col-sm-3">Email</dt>
-                    <dd class="col-sm-9" th:text="${user.email} ?: '-'">-</dd>
-
-                    <dt class="col-sm-3">Enabled</dt>
-                    <dd class="col-sm-9" th:text="${user.enabled}">true</dd>
-
-                    <dt class="col-sm-3">Failed attempts</dt>
-                    <dd class="col-sm-9" th:text="${user.failedLoginAttempts}">0</dd>
-
-                    <dt class="col-sm-3">Lock until</dt>
-                    <dd class="col-sm-9" th:text="${user.lockUntil} ?: '-'">-</dd>
-                </dl>
-            </div>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Профиль</title>
+    <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}">
+</head>
+<body class="container mt-4">
+    <h2>Профиль</h2>
+    <p>Имя пользователя: <span th:text="${user.username}">...</span></p>
+    <p>Email: <span th:text="${user.email}">...</span></p>
+    <p>Активен: <span th:text="${user.enabled} ? 'Да' : 'Нет'">...</span></p>
+    <p>Двухфакторная аутентификация:
+        <span th:if="${user.totpEnabled}" class="badge bg-success">Включена</span>
+        <span th:unless="${user.totpEnabled}" class="badge bg-secondary">Отключена</span>
+        <a th:href="@{/profile/totp}" class="btn btn-sm btn-outline-primary ms-2">Настроить</a>
+    </p>
+    <h3>Сменить пароль</h3>
+    <form th:action="@{/profile/password}" method="post" th:object="${passwordForm}">
+        <div class="mb-3">
+            <label>Текущий пароль</label>
+            <input type="password" th:field="*{currentPassword}" class="form-control" required>
         </div>
-    </div>
-
-    <div class="card shadow-sm mt-3">
-        <div class="card-body">
-            <h3 class="h6 mb-3">Смена пароля</h3>
-
-            <div th:if="${passwordSuccess}" class="alert alert-success" th:text="${passwordSuccess}"></div>
-
-            <form th:action="@{/profile/password}" th:object="${passwordForm}" method="post" class="row g-3" style="max-width: 560px;">
-                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-
-                <div class="col-12">
-                    <label class="form-label">Текущий пароль</label>
-                    <input type="password" class="form-control" th:field="*{currentPassword}" autocomplete="current-password"/>
-                    <div class="text-danger small mt-1" th:if="${#fields.hasErrors('currentPassword')}" th:errors="*{currentPassword}"></div>
-                </div>
-
-                <div class="col-12">
-                    <label class="form-label">Новый пароль</label>
-                    <input type="password" class="form-control" th:field="*{newPassword}" autocomplete="new-password"/>
-                    <div class="text-danger small mt-1" th:if="${#fields.hasErrors('newPassword')}" th:errors="*{newPassword}"></div>
-                    <div class="form-text">Минимум 8 символов, заглавная и строчная буква, цифра и спецсимвол.</div>
-                </div>
-
-                <div class="col-12">
-                    <label class="form-label">Подтвердите новый пароль</label>
-                    <input type="password" class="form-control" th:field="*{confirmPassword}" autocomplete="new-password"/>
-                    <div class="text-danger small mt-1" th:if="${#fields.hasErrors('confirmPassword')}" th:errors="*{confirmPassword}"></div>
-                </div>
-
-                <div class="col-12">
-                    <button type="submit" class="btn btn-primary">Обновить пароль</button>
-                </div>
-            </form>
+        <div class="mb-3">
+            <label>Новый пароль</label>
+            <input type="password" th:field="*{newPassword}" class="form-control" required>
         </div>
-    </div>
-</section>
+        <div class="mb-3">
+            <label>Подтверждение</label>
+            <input type="password" th:field="*{confirmPassword}" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Сменить пароль</button>
+    </form>
+</body>
 </html>

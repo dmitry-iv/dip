@@ -147,6 +147,10 @@ public class UserService {
         auditService.logCurrent(http, AuditActions.USER_UNLOCKED.name(), AuditResults.SUCCESS.name(),
                 "User", id.toString(), "Unlocked");
     }
+    @Transactional
+    public void save(AppUser user) {
+        userRepository.save(user);
+    }
 
     /**
      * Change password for the given user (self-service).
