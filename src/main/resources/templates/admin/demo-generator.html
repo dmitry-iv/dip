@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::section})}">
+<section>
+
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="bi bi-magic text-warning"></i> Генератор демо-данных</h1>
+            <p class="text-soc-muted mb-0">
+                Создаёт реалистичную картину активности SOC за последние 24 часа.
+                Используется для презентаций, тестирования UI и проверки работы корреляционных правил.
+            </p>
+        </div>
+        <a th:href="@{/admin/users}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> К админке
+        </a>
+    </div>
+
+    <div th:if="${savedOk}" class="alert alert-soc-success">
+        <i class="bi bi-check-circle"></i> <span th:text="${savedOk}">OK</span>
+    </div>
+    <div th:if="${errorMsg}" class="alert alert-soc-danger">
+        <i class="bi bi-x-circle"></i> <span th:text="${errorMsg}">Ошибка</span>
+    </div>
+
+    <div class="row g-3">
+
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header"><i class="bi bi-plus-circle"></i> Сгенерировать демо-данные</div>
+                <div class="card-body">
+                    <p class="text-soc-muted">
+                        Будет создано:
+                    </p>
+                    <ul class="text-soc-muted small">
+                        <li>~25 успешных логинов от разных пользователей</li>
+                        <li>~18 операций доступа к документам</li>
+                        <li>~8 неудачных попыток входа</li>
+                        <li>~5 административных действий (изменение ролей)</li>
+                        <li>~4 операции экспорта данных</li>
+                        <li><strong>6 инцидентов разной серьёзности:</strong>
+                            <ul>
+                                <li>BRUTE_FORCE (Critical, sev 5)</li>
+                                <li>CREDENTIAL_STUFFING (High, sev 4)</li>
+                                <li>MFA_BYPASS_ATTEMPT (High, sev 4)</li>
+                                <li>PRIVILEGE_ESCALATION (High, sev 4)</li>
+                                <li>MASS_EXPORT (Medium, sev 3)</li>
+                                <li>OFF_HOURS_LOGIN (Medium, sev 3)</li>
+                            </ul>
+                        </li>
+                    </ul>
+
+                    <div class="alert alert-soc-warning small mt-3">
+                        <i class="bi bi-info-circle"></i>
+                        Если включены email-алерты, на инциденты severity ≥ 4 будут отправлены письма.
+                        При необходимости отключите алерты в
+                        <a th:href="@{/admin/alert-settings}" class="text-warning">настройках</a>
+                        перед генерацией.
+                    </div>
+
+                    <form th:action="@{/admin/demo-generator/generate}" method="post"
+                          onsubmit="return confirm('Сгенерировать демо-данные? Это создаст реальные записи в БД.');">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-magic"></i> Сгенерировать
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header"><i class="bi bi-trash"></i> Очистить демо-данные</div>
+                <div class="card-body">
+                    <p class="text-soc-muted">
+                        Удаляет только записи с маркером <code>[DEMO]</code> в полях details/description.
+                        Реальные пользовательские записи остаются нетронутыми.
+                    </p>
+
+                    <div class="alert alert-soc-danger small">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Внимание.</strong> Удаление записей из <code>audit_log</code> нарушает
+                        hash-цепочку — это штатное поведение tamper-evident журнала: любая модификация
+                        исторических записей детектируется. Если после очистки требуется полностью
+                        сбросить цепочку, выполните в pgAdmin:
+                        <pre class="mt-2 mb-0 small"><code>TRUNCATE TABLE audit_log;
+UPDATE audit_chain_state SET last_hash='GENESIS', last_seq=0 WHERE id=1;</code></pre>
+                    </div>
+
+                    <form th:action="@{/admin/demo-generator/cleanup}" method="post"
+                          onsubmit="return confirm('Удалить все демо-данные? Это нарушит hash-цепочку аудита.');">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="bi bi-trash"></i> Очистить демо
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header"><i class="bi bi-lightbulb"></i> Назначение</div>
+        <div class="card-body small text-soc-muted">
+            <p class="mb-2">
+                Генератор позволяет наполнить систему реалистичными данными для:
+            </p>
+            <ul class="mb-2">
+                <li>Демонстрации работы дашборда, журнала аудита и списка инцидентов на наполненной системе</li>
+                <li>Тестирования корреляционных правил и карточек инцидентов разной серьёзности</li>
+                <li>Проверки tamper-detection: после генерации можно намеренно модифицировать запись
+                    в БД (например, <code>UPDATE audit_log SET details='...' WHERE ...</code>)
+                    и убедиться что система детектирует разрыв цепочки</li>
+                <li>Отладки UI — графиков, фильтров, цветовой индикации severity</li>
+            </ul>
+            <p class="mb-0">
+                Все демо-записи помечаются маркером <code>[DEMO]</code> и могут быть удалены одной кнопкой.
+            </p>
+        </div>
+    </div>
+
+</section>
+</html>

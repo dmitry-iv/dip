@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::section})}">
+<section>
+
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="bi bi-journal-text text-warning"></i> Журнал аудита</h1>
+            <p class="text-soc-muted mb-0">
+                Защищён hash-цепочкой SHA-256.
+                Любая модификация записей приведёт к разрыву цепочки и автоматическому созданию инцидента <code>AUDIT_TAMPERING</code>.
+            </p>
+        </div>
+        <div>
+            <button class="btn btn-outline-primary btn-sm" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise"></i> Обновить
+            </button>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span><i class="bi bi-funnel"></i> Фильтры</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#filtersBody">
+                <i class="bi bi-chevron-down"></i>
+            </button>
+        </div>
+        <div id="filtersBody" class="collapse show">
+            <div class="card-body">
+                <form method="get" th:action="@{/audit}" class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Пользователь</label>
+                        <input type="text" name="actor" th:value="${actor}" class="form-control" placeholder="например: admin"/>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Действие (action)</label>
+                        <input type="text" name="action" th:value="${action}" class="form-control" placeholder="LOGIN_SUCCESS"/>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Категория</label>
+                        <select name="category" class="form-select">
+                            <option value="">— все категории —</option>
+                            <option value="AUTH"      th:selected="${category == 'AUTH'}">AUTH</option>
+                            <option value="ACCESS"    th:selected="${category == 'ACCESS'}">ACCESS</option>
+                            <option value="USER_MGMT" th:selected="${category == 'USER_MGMT'}">USER_MGMT</option>
+                            <option value="DATA"      th:selected="${category == 'DATA'}">DATA</option>
+                            <option value="CONFIG"    th:selected="${category == 'CONFIG'}">CONFIG</option>
+                            <option value="NETWORK"   th:selected="${category == 'NETWORK'}">NETWORK</option>
+                            <option value="INCIDENT"  th:selected="${category == 'INCIDENT'}">INCIDENT</option>
+                            <option value="SYSTEM"    th:selected="${category == 'SYSTEM'}">SYSTEM</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Min Severity</label>
+                        <select name="minSeverity" class="form-select">
+                            <option value="">— любая —</option>
+                            <option value="1" th:selected="${minSeverity == 1}">1 — Info</option>
+                            <option value="2" th:selected="${minSeverity == 2}">2 — Low</option>
+                            <option value="3" th:selected="${minSeverity == 3}">3 — Medium</option>
+                            <option value="4" th:selected="${minSeverity == 4}">4 — High</option>
+                            <option value="5" th:selected="${minSeverity == 5}">5 — Critical</option>
+                        </select>
+                    </div>
+                    <div class="col-12 d-flex justify-content-between align-items-end">
+                        <div>
+                            <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> Применить</button>
+                            <a th:href="@{/audit}" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i> Сбросить</a>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-warning" id="btnIntegrityCheck">
+                                <i class="bi bi-shield-check"></i> Проверить целостность
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="integrityResult" class="mb-3" style="display: none;"></div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-list-ul"></i> События</span>
+            <span class="text-soc-muted small" th:if="${entries != null}">
+                Стр. <span th:text="${entries.number + 1}">1</span> из <span th:text="${entries.totalPages}">1</span>
+                · всего <span th:text="${entries.totalElements}">0</span>
+            </span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-soc mb-0">
+                <thead>
+                <tr>
+                    <th style="width: 130px;">Время</th>
+                    <th style="width: 60px;">Sev</th>
+                    <th style="width: 100px;">Категория</th>
+                    <th>Действие</th>
+                    <th style="width: 80px;">Result</th>
+                    <th>Пользователь</th>
+                    <th style="width: 130px;">IP</th>
+                    <th>Подробности</th>
+                    <th style="width: 110px;">Hash</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="e : ${entries.content}">
+                    <td class="text-soc-muted small font-monospace" th:text="${#temporals.format(e.timestamp, 'dd.MM HH:mm:ss')}">01.01 12:00</td>
+                    <td><span th:class="'sev-badge sev-' + ${e.severity}" th:text="${e.severity}">1</span></td>
+                    <td><span class="cat-badge" th:text="${e.category}">AUTH</span></td>
+                    <td><code th:text="${e.action}">LOGIN_SUCCESS</code></td>
+                    <td>
+                        <span th:if="${e.result == 'SUCCESS'}" class="text-success small"><i class="bi bi-check-circle"></i> OK</span>
+                        <span th:if="${e.result == 'FAIL'}" class="text-danger small"><i class="bi bi-x-circle"></i> FAIL</span>
+                        <span th:if="${e.result == 'INFO'}" class="text-info small"><i class="bi bi-info-circle"></i> INFO</span>
+                    </td>
+                    <td th:text="${e.actorUsername} ?: '—'">user</td>
+                    <td><code class="small" th:text="${e.ip} ?: '—'">—</code></td>
+                    <td class="text-soc-muted small" style="max-width: 400px; word-wrap: break-word; white-space: normal;"
+                        th:title="${e.details}"
+                        th:text="${#strings.abbreviate(e.details, 120)}">—</td>
+                    <td>
+                        <code class="small" th:title="${e.hash}" th:text="${#strings.abbreviate(e.hash, 12)}">—</code>
+                    </td>
+                </tr>
+                <tr th:if="${entries == null or entries.content.isEmpty()}">
+                    <td colspan="9" class="text-center text-soc-muted py-4">
+                        <i class="bi bi-inbox"></i> По заданным фильтрам ничего не найдено
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div th:if="${entries != null and entries.totalPages > 1}" class="card-footer d-flex justify-content-end">
+            <div class="btn-group">
+                <a class="btn btn-sm btn-outline-secondary"
+                   th:classappend="${entries.first} ? 'disabled'"
+                   th:href="@{/audit(actor=${actor},action=${action},category=${category},minSeverity=${minSeverity},page=${entries.number - 1})}">
+                    <i class="bi bi-chevron-left"></i> Назад
+                </a>
+                <a class="btn btn-sm btn-outline-secondary"
+                   th:classappend="${entries.last} ? 'disabled'"
+                   th:href="@{/audit(actor=${actor},action=${action},category=${category},minSeverity=${minSeverity},page=${entries.number + 1})}">
+                    Вперёд <i class="bi bi-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header"><i class="bi bi-info-circle"></i> О защите целостности</div>
+        <div class="card-body small text-soc-muted">
+            Каждая запись содержит криптографический хеш SHA-256, который зависит от её содержимого
+            и от хеша предыдущей записи. Это образует непрерывную цепочку
+            (<a href="https://en.wikipedia.org/wiki/Hash_chain" target="_blank" class="text-warning">hash chain</a>) —
+            любая модификация рвёт связь с последующими записями. Кнопка
+            <span class="badge bg-warning text-dark">Проверить целостность</span>
+            запускает полную верификацию всей цепочки и сообщает о первой повреждённой записи.
+        </div>
+    </div>
+
+    <script th:inline="none">
+        document.getElementById('btnIntegrityCheck').addEventListener('click', function () {
+            var box = document.getElementById('integrityResult');
+            box.style.display = 'block';
+            box.innerHTML = '<div class="alert alert-soc-info"><i class="bi bi-hourglass-split"></i> Проверка целостности...</div>';
+
+            fetch('/audit/integrity-check', {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' },
+                credentials: 'same-origin'
+            }).then(function (resp) {
+                if (resp.status === 401 || resp.status === 403) {
+                    box.innerHTML = '<div class="alert alert-soc-warning"><i class="bi bi-exclamation-triangle"></i> Нет прав. Требуется роль MANAGER или ADMIN.</div>';
+                    return null;
+                }
+                return resp.json();
+            }).then(function (data) {
+                if (!data) return;
+                if (data.valid) {
+                    box.innerHTML =
+                        '<div class="alert alert-soc-success">' +
+                        '<i class="bi bi-shield-check"></i> ' +
+                        '<strong>Цепочка целостна.</strong> Проверено записей: <strong>' +
+                        data.recordsChecked + '</strong>. ' + (data.message || '') +
+                        '</div>';
+                } else {
+                    box.innerHTML =
+                        '<div class="alert alert-soc-danger">' +
+                        '<i class="bi bi-shield-x"></i> ' +
+                        '<strong>ВНИМАНИЕ! Цепочка нарушена.</strong> ' +
+                        'Проверено: ' + data.recordsChecked +
+                        ', первая ошибка в записи <code>' + data.firstFailureId + '</code>. ' +
+                        (data.message || '') +
+                        '</div>';
+                }
+            }).catch(function (e) {
+                box.innerHTML = '<div class="alert alert-soc-danger"><i class="bi bi-x-circle"></i> Ошибка проверки: ' + e.message + '</div>';
+            });
+        });
+    </script>
+
+</section>
+</html>

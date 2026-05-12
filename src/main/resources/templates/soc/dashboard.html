@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::section})}">
+<section>
+
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="bi bi-display text-warning"></i> SOC-панель</h1>
+            <p class="text-soc-muted mb-0">
+                Рабочее место аналитика
+                <span class="fw-semibold text-warning" th:text="${currentUsername}">analyst</span>.
+                <span class="ms-2"><span class="live-dot"></span>Корреляция активна</span>
+            </p>
+        </div>
+        <div>
+            <button class="btn btn-outline-primary btn-sm" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise"></i> Обновить
+            </button>
+        </div>
+    </div>
+
+    <div th:if="${savedOk}" class="alert alert-soc-success">
+        <i class="bi bi-check-circle"></i> <span th:text="${savedOk}">OK</span>
+    </div>
+    <div th:if="${errorMsg}" class="alert alert-soc-danger">
+        <i class="bi bi-x-circle"></i> <span th:text="${errorMsg}">Ошибка</span>
+    </div>
+
+    <!-- KPI -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card critical">
+                <i class="bi bi-inbox stat-icon"></i>
+                <div class="stat-label">Очередь NEW</div>
+                <div class="stat-value" th:text="${analystStats != null ? analystStats.openQueue() : 0}">0</div>
+                <div class="text-soc-muted small">требуют принятия</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card info">
+                <i class="bi bi-person-check stat-icon"></i>
+                <div class="stat-label">У меня в работе</div>
+                <div class="stat-value" th:text="${analystStats != null ? analystStats.mineInProgress() : 0}">0</div>
+                <div class="text-soc-muted small">assigned to me</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card success">
+                <i class="bi bi-check2-all stat-icon"></i>
+                <div class="stat-label">Решено за 24ч</div>
+                <div class="stat-value" th:text="${analystStats != null ? analystStats.resolvedToday24h() : 0}">0</div>
+                <div class="text-soc-muted small">мной</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card warning">
+                <i class="bi bi-fire stat-icon"></i>
+                <div class="stat-label">High/Critical 24ч</div>
+                <div class="stat-value" th:text="${analystStats != null ? analystStats.highSeverity24h() : 0}">0</div>
+                <div class="text-soc-muted small">severity ≥ 4</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+
+        <!-- Очередь NEW -->
+        <div class="col-lg-7">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-inbox"></i> Очередь новых инцидентов</span>
+                    <span class="badge bg-danger" th:text="${queue != null ? queue.size() : 0}">0</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-soc mb-0 small">
+                        <thead>
+                        <tr>
+                            <th style="width: 60px;">Sev</th>
+                            <th>Правило</th>
+                            <th>User / IP</th>
+                            <th style="width: 110px;">Время</th>
+                            <th style="width: 220px;">Действие</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="i : ${queue}">
+                            <td><span th:class="'sev-badge sev-' + ${i.severity}" th:text="${i.severity}">3</span></td>
+                            <td>
+                                <code th:text="${i.ruleName}">RULE</code>
+                                <div class="text-soc-muted small" th:text="${#strings.abbreviate(i.description, 70)}">desc</div>
+                            </td>
+                            <td class="small">
+                                <div th:if="${i.affectedUser}" th:text="${i.affectedUser}">user</div>
+                                <div th:if="${i.sourceIp}" class="text-soc-muted font-monospace" th:text="${i.sourceIp}">ip</div>
+                            </td>
+                            <td class="text-soc-muted small font-monospace"
+                                th:text="${#temporals.format(i.createdAt, 'dd.MM HH:mm')}">01.01 12:00</td>
+                            <td>
+                                <form th:action="@{'/soc/incidents/' + ${i.id} + '/assign'}" method="post" class="d-inline">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                    <button type="submit" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-hand-thumbs-up"></i> Взять
+                                    </button>
+                                </form>
+                                <a th:href="@{'/incidents/' + ${i.id}}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        <tr th:if="${queue == null or queue.isEmpty()}">
+                            <td colspan="5" class="text-center text-soc-muted py-4">
+                                <i class="bi bi-emoji-smile fs-3"></i><br/>
+                                Очередь пуста — все инциденты приняты в работу
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Мои инциденты в работе -->
+        <div class="col-lg-5">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-person-check"></i> Мои инциденты в работе</span>
+                    <span class="badge bg-info" th:text="${myIncidents != null ? myIncidents.size() : 0}">0</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-soc mb-0 small">
+                        <thead>
+                        <tr>
+                            <th style="width: 50px;">Sev</th>
+                            <th>Инцидент</th>
+                            <th style="width: 230px;">Действия</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="i : ${myIncidents}">
+                            <td><span th:class="'sev-badge sev-' + ${i.severity}" th:text="${i.severity}">3</span></td>
+                            <td>
+                                <code th:text="${i.ruleName}">RULE</code>
+                                <div class="text-soc-muted small">
+                                    <span th:if="${i.affectedUser}" th:text="${i.affectedUser}">user</span>
+                                    <span th:if="${i.sourceIp}" th:text="' · ' + ${i.sourceIp}">· ip</span>
+                                </div>
+                            </td>
+                            <td>
+                                <form th:action="@{'/soc/incidents/' + ${i.id} + '/resolve'}" method="post" class="d-flex gap-1">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                    <button type="submit" name="resolution" value="RESOLVED"
+                                            class="btn btn-sm btn-success" title="Решить">
+                                        <i class="bi bi-check-lg"></i>
+                                    </button>
+                                    <button type="submit" name="resolution" value="FALSE_POSITIVE"
+                                            class="btn btn-sm btn-outline-secondary" title="Ложное срабатывание">
+                                        <i class="bi bi-x-circle"></i>
+                                    </button>
+                                    <a th:href="@{'/incidents/' + ${i.id}}" class="btn btn-sm btn-outline-warning" title="Открыть">
+                                        <i class="bi bi-arrow-up-right"></i>
+                                    </a>
+                                </form>
+                            </td>
+                        </tr>
+                        <tr th:if="${myIncidents == null or myIncidents.isEmpty()}">
+                            <td colspan="3" class="text-center text-soc-muted py-4">
+                                <i class="bi bi-cup-hot fs-3"></i><br/>
+                                Нет активных инцидентов в работе
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header"><i class="bi bi-info-circle"></i> Инструкция SOC-аналитика</div>
+        <div class="card-body small text-soc-muted">
+            <ol class="mb-0">
+                <li><strong>Очередь NEW</strong> — приоритизируется по severity. Берите сначала Critical (sev 5), затем High (sev 4).</li>
+                <li><strong>«Взять»</strong> — назначает инцидент на вас и переводит в IN_PROGRESS.</li>
+                <li><strong>Решить</strong> (зелёный <i class="bi bi-check-lg"></i>) — закрытие инцидента после обработки. Можно добавить комментарий через карточку.</li>
+                <li><strong>Ложное срабатывание</strong> (серый <i class="bi bi-x-circle"></i>) — корреляция ошиблась, действия не требуются.</li>
+                <li><strong>Открыть карточку</strong> (оранжевый <i class="bi bi-arrow-up-right"></i>) — детальный просмотр, передача другому аналитику, связанные события аудита.</li>
+            </ol>
+        </div>
+    </div>
+
+</section>
+</html>

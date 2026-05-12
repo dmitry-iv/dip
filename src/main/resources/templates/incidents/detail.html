@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::section})}">
+<section>
+
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h3 mb-1">
+                <i class="bi bi-exclamation-triangle text-warning"></i>
+                Инцидент <code th:text="${incident.ruleName}">RULE</code>
+            </h1>
+            <p class="text-soc-muted mb-0">
+                <span class="font-monospace small" th:text="${incident.id}">uuid</span>
+            </p>
+        </div>
+        <a th:href="@{/incidents}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> К списку
+        </a>
+    </div>
+
+    <div th:if="${savedOk}" class="alert alert-soc-success">
+        <i class="bi bi-check-circle"></i> <span th:text="${savedOk}">OK</span>
+    </div>
+    <div th:if="${errorMsg}" class="alert alert-soc-danger">
+        <i class="bi bi-x-circle"></i> <span th:text="${errorMsg}">Ошибка</span>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-soc-muted small text-uppercase">Severity</div>
+                    <div class="mt-2">
+                        <span th:class="'sev-badge sev-' + ${incident.severity}" style="font-size: 1.4rem; padding: 0.4rem 1rem;"
+                              th:text="${incident.severity}">5</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-soc-muted small text-uppercase">Статус</div>
+                    <div class="mt-2">
+                        <span th:class="'status-pill status-' + ${incident.status}" style="font-size: 0.95rem; padding: 0.4rem 0.8rem;"
+                              th:text="${incident.status}">NEW</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-soc-muted small text-uppercase">Назначен</div>
+                    <div class="mt-2">
+                        <span th:if="${assignedUser}" class="fw-semibold text-warning" th:text="${assignedUser.username}">analyst</span>
+                        <span th:if="${assignedUser == null}" class="text-soc-muted">не назначен</span>
+                    </div>
+                    <div th:if="${incident.assignedAt}" class="text-soc-muted small mt-1"
+                         th:text="${#temporals.format(incident.assignedAt, 'dd.MM HH:mm')}"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-soc-muted small text-uppercase">MITRE ATT&amp;CK</div>
+                    <div class="mt-2">
+                        <code th:if="${incident.mitreTechnique}" th:text="${incident.mitreTechnique}">T1110</code>
+                        <span th:if="${incident.mitreTechnique == null}" class="text-soc-muted">—</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+
+        <div class="col-lg-8">
+            <!-- Описание -->
+            <div class="card mb-3">
+                <div class="card-header"><i class="bi bi-card-text"></i> Описание инцидента</div>
+                <div class="card-body">
+                    <p class="mb-2" th:text="${incident.description}">Описание</p>
+                    <div class="row mt-3 small">
+                        <div class="col-md-6">
+                            <div class="text-soc-muted">Затронут пользователь:</div>
+                            <div th:text="${incident.affectedUser} ?: '—'">user</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-soc-muted">Источник IP:</div>
+                            <div class="font-monospace" th:text="${incident.sourceIp} ?: '—'">ip</div>
+                        </div>
+                        <div class="col-md-6 mt-2">
+                            <div class="text-soc-muted">Создан:</div>
+                            <div th:text="${#temporals.format(incident.createdAt, 'dd.MM.yyyy HH:mm:ss')}">01.01 12:00</div>
+                        </div>
+                        <div class="col-md-6 mt-2" th:if="${incident.resolvedAt}">
+                            <div class="text-soc-muted">Закрыт:</div>
+                            <div th:text="${#temporals.format(incident.resolvedAt, 'dd.MM.yyyy HH:mm:ss')}">—</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Связанные события -->
+            <div class="card mb-3">
+                <div class="card-header"><i class="bi bi-link-45deg"></i> Связанные события аудита
+                    <span class="badge bg-secondary ms-2" th:text="${relatedLogs != null ? relatedLogs.size() : 0}">0</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-soc mb-0 small">
+                        <thead>
+                        <tr>
+                            <th style="width: 130px;">Время</th>
+                            <th>Действие</th>
+                            <th>User</th>
+                            <th>IP</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="l : ${relatedLogs}">
+                            <td class="text-soc-muted small font-monospace"
+                                th:text="${#temporals.format(l.timestamp, 'dd.MM HH:mm:ss')}">01.01 12:00</td>
+                            <td><code th:text="${l.action}">ACTION</code></td>
+                            <td th:text="${l.actorUsername} ?: '—'">user</td>
+                            <td><code class="small font-monospace" th:text="${l.ip} ?: '—'">—</code></td>
+                        </tr>
+                        <tr th:if="${relatedLogs == null or relatedLogs.isEmpty()}">
+                            <td colspan="4" class="text-center text-soc-muted py-3">
+                                Нет связанных событий
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Резолюция -->
+            <div class="card" th:if="${incident.resolutionNotes}">
+                <div class="card-header"><i class="bi bi-chat-text"></i> Комментарий аналитика</div>
+                <div class="card-body">
+                    <p class="mb-0" th:text="${incident.resolutionNotes}"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Действия -->
+        <div class="col-lg-4">
+
+            <!-- Взять в работу -->
+            <div class="card mb-3" th:if="${assignedUser == null and incident.status.name() != 'RESOLVED' and incident.status.name() != 'FALSE_POSITIVE'}">
+                <div class="card-header"><i class="bi bi-hand-thumbs-up"></i> Принять в работу</div>
+                <div class="card-body">
+                    <p class="text-soc-muted small">
+                        Назначить инцидент на себя и перевести в статус IN_PROGRESS.
+                    </p>
+                    <form th:action="@{'/incidents/' + ${incident.id} + '/assign'}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-hand-thumbs-up"></i> Взять себе
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Передать -->
+            <div class="card mb-3" th:if="${assignedUser != null and incident.status.name() != 'RESOLVED' and incident.status.name() != 'FALSE_POSITIVE'}">
+                <div class="card-header"><i class="bi bi-arrow-left-right"></i> Передать другому</div>
+                <div class="card-body">
+                    <form th:action="@{'/incidents/' + ${incident.id} + '/transfer'}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                        <select name="newAssigneeId" class="form-select form-select-sm mb-2" required>
+                            <option value="">— выберите аналитика —</option>
+                            <option th:each="a : ${analysts}" th:value="${a.id}"
+                                    th:text="${a.username}"
+                                    th:disabled="${assignedUser != null and a.id == assignedUser.id}">user</option>
+                        </select>
+                        <button type="submit" class="btn btn-outline-warning btn-sm w-100">
+                            <i class="bi bi-arrow-left-right"></i> Передать
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Закрыть -->
+            <div class="card" th:if="${incident.status.name() != 'RESOLVED' and incident.status.name() != 'FALSE_POSITIVE'}">
+                <div class="card-header"><i class="bi bi-check-circle"></i> Закрыть инцидент</div>
+                <div class="card-body">
+                    <form th:action="@{'/incidents/' + ${incident.id} + '/resolve'}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+                        <div class="mb-3">
+                            <label class="form-label small">Резолюция</label>
+                            <select name="resolution" class="form-select form-select-sm" required>
+                                <option value="RESOLVED">RESOLVED — решён</option>
+                                <option value="FALSE_POSITIVE">FALSE_POSITIVE — ложное срабатывание</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small">Комментарий</label>
+                            <textarea name="notes" rows="3" class="form-control form-control-sm"
+                                      placeholder="Что было сделано, причина, выводы..."></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-check-lg"></i> Закрыть
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Информация о закрытом -->
+            <div class="card" th:if="${incident.status.name() == 'RESOLVED' or incident.status.name() == 'FALSE_POSITIVE'}">
+                <div class="card-body text-center text-soc-muted">
+                    <i class="bi bi-archive fs-2"></i>
+                    <p class="mt-2 mb-0">Инцидент закрыт</p>
+                    <small th:text="${'Статус: ' + incident.status}"></small>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</section>
+</html>

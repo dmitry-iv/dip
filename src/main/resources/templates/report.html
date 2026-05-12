@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::section})}">
+<section>
+
+    <div class="d-flex align-items-center justify-content-between mb-4 d-print-none">
+        <div>
+            <h1 class="h3 mb-1"><i class="bi bi-file-earmark-text text-warning"></i> Сводный отчёт по ИБ</h1>
+            <p class="text-soc-muted mb-0">
+                Аналитика событий и инцидентов за последние 24 часа.
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a th:href="@{/report/export.csv}" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-filetype-csv"></i> Экспорт CSV
+            </a>
+            <a th:href="@{/report/export.html}" target="_blank" class="btn btn-outline-warning btn-sm">
+                <i class="bi bi-printer"></i> Экспорт PDF
+            </a>
+            <button class="btn btn-outline-secondary btn-sm" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise"></i> Обновить
+            </button>
+        </div>
+    </div>
+
+    <div th:if="${reportError}" class="alert alert-soc-danger">
+        <i class="bi bi-x-circle"></i> Не удалось построить отчёт: <span th:text="${reportError}"></span>
+    </div>
+
+    <!-- Сводные показатели -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card info">
+                <i class="bi bi-journal-text stat-icon"></i>
+                <div class="stat-label">Всего событий</div>
+                <div class="stat-value" th:text="${summary != null ? summary.totalAudit() : 0}">0</div>
+                <div class="text-soc-muted small">в журнале аудита</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card warning">
+                <i class="bi bi-exclamation-triangle stat-icon"></i>
+                <div class="stat-label">Всего инцидентов</div>
+                <div class="stat-value" th:text="${summary != null ? summary.totalIncidents() : 0}">0</div>
+                <div class="text-soc-muted small">за всё время</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card info">
+                <i class="bi bi-clock-history stat-icon"></i>
+                <div class="stat-label">Инцидентов за 24ч</div>
+                <div class="stat-value" th:text="${summary != null ? summary.incidents24h() : 0}">0</div>
+                <div class="text-soc-muted small">все severity</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card critical">
+                <i class="bi bi-fire stat-icon"></i>
+                <div class="stat-label">High/Critical 24ч</div>
+                <div class="stat-value" th:text="${summary != null ? summary.highSeverity24h() : 0}">0</div>
+                <div class="text-soc-muted small">severity ≥ 4</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Графики -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header"><i class="bi bi-pie-chart"></i> Распределение событий по категориям (24ч)</div>
+                <div class="card-body" style="min-height: 320px;">
+                    <canvas id="categoryChart"></canvas>
+                    <div id="categoryEmpty" class="text-center text-soc-muted py-5" style="display:none;">
+                        <i class="bi bi-inbox fs-2"></i><br/>Нет данных за последние 24 часа
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header"><i class="bi bi-bar-chart"></i> Распределение по severity (24ч)</div>
+                <div class="card-body" style="min-height: 320px;">
+                    <canvas id="severityChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблицы -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header"><i class="bi bi-globe"></i> Топ-10 IP по активности (24ч)</div>
+                <div class="card-body p-0">
+                    <table class="table table-soc mb-0 small">
+                        <thead>
+                        <tr><th>#</th><th>IP-адрес</th><th class="text-end">Событий</th></tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="row, iter : ${topIps}">
+                            <td class="text-soc-muted" th:text="${iter.count}">1</td>
+                            <td><code th:text="${row.name()}">10.0.0.1</code></td>
+                            <td class="text-end fw-semibold" th:text="${row.count()}">0</td>
+                        </tr>
+                        <tr th:if="${topIps == null or topIps.isEmpty()}">
+                            <td colspan="3" class="text-center text-soc-muted py-3">
+                                Нет данных за последние 24 часа
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header"><i class="bi bi-person"></i> Топ-10 пользователей по активности (24ч)</div>
+                <div class="card-body p-0">
+                    <table class="table table-soc mb-0 small">
+                        <thead>
+                        <tr><th>#</th><th>Пользователь</th><th class="text-end">Событий</th></tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="row, iter : ${topUsers}">
+                            <td class="text-soc-muted" th:text="${iter.count}">1</td>
+                            <td th:text="${row.name()}">user</td>
+                            <td class="text-end fw-semibold" th:text="${row.count()}">0</td>
+                        </tr>
+                        <tr th:if="${topUsers == null or topUsers.isEmpty()}">
+                            <td colspan="3" class="text-center text-soc-muted py-3">
+                                Нет данных за последние 24 часа
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header"><i class="bi bi-shield-exclamation"></i> Топ инцидентов по правилам</div>
+                <div class="card-body p-0">
+                    <table class="table table-soc mb-0 small">
+                        <thead>
+                        <tr><th>Правило</th><th class="text-end">Случаев</th></tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="row : ${topRules}">
+                            <td><code th:text="${row.name()}">RULE</code></td>
+                            <td class="text-end fw-semibold" th:text="${row.count()}">0</td>
+                        </tr>
+                        <tr th:if="${topRules == null or topRules.isEmpty()}">
+                            <td colspan="2" class="text-center text-soc-muted py-3">
+                                Инцидентов пока нет
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header"><i class="bi bi-flag"></i> Распределение инцидентов по статусу</div>
+                <div class="card-body p-0">
+                    <table class="table table-soc mb-0 small">
+                        <thead>
+                        <tr><th>Статус</th><th class="text-end">Случаев</th></tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="entry : ${incidentStatuses}">
+                            <td>
+                                <span th:class="'status-pill status-' + ${entry.key}" th:text="${entry.key}">NEW</span>
+                            </td>
+                            <td class="text-end fw-semibold" th:text="${entry.value}">0</td>
+                        </tr>
+                        <tr th:if="${incidentStatuses == null or incidentStatuses.isEmpty()}">
+                            <td colspan="2" class="text-center text-soc-muted py-3">
+                                Инцидентов пока нет
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Скрытый блок с данными для JS -->
+    <div id="reportData"
+         th:attr="data-categories=${categoryDistributionJson},
+                  data-severity=${severityDistributionJson}"
+         style="display:none;"></div>
+
+    <!-- ВАЖНО: скрипты должны быть ВНУТРИ section, иначе Thymeleaf-фрагмент их не подхватит -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script th:inline="none">
+        document.addEventListener('DOMContentLoaded', function () {
+            var dataEl = document.getElementById('reportData');
+            var catData = {};
+            var sevArr = [0,0,0,0,0];
+
+            try {
+                catData = JSON.parse(dataEl.getAttribute('data-categories') || '{}');
+            } catch (e) { console.error('Failed to parse categories', e); }
+
+            try {
+                sevArr = JSON.parse(dataEl.getAttribute('data-severity') || '[0,0,0,0,0]');
+            } catch (e) { console.error('Failed to parse severity', e); }
+
+            // ---- Категории (doughnut) ----
+            var catLabels = Object.keys(catData);
+            var catValues = Object.values(catData);
+            if (catLabels.length === 0) {
+                document.getElementById('categoryChart').style.display = 'none';
+                document.getElementById('categoryEmpty').style.display = 'block';
+            } else {
+                var catCtx = document.getElementById('categoryChart').getContext('2d');
+                new Chart(catCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: catLabels,
+                        datasets: [{
+                            data: catValues,
+                            backgroundColor: ['#58a6ff','#56d364','#ffc107','#ff7a00','#f85149','#8b949e','#a371f7','#39d4cd']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'right', labels: { color: '#8b949e' } } }
+                    }
+                });
+            }
+
+            // ---- Severity (bar) ----
+            var sevCtx = document.getElementById('severityChart').getContext('2d');
+            new Chart(sevCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['1 Info','2 Low','3 Medium','4 High','5 Critical'],
+                    datasets: [{
+                        label: 'Событий',
+                        data: sevArr,
+                        backgroundColor: ['#56d364','#58a6ff','#ffc107','#ff7a00','#f85149']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#6e7681' }, grid: { color: '#252d36' } },
+                        y: { ticks: { color: '#6e7681', precision: 0 }, grid: { color: '#252d36' }, beginAtZero: true }
+                    }
+                }
+            });
+        });
+    </script>
+
+</section>
+</html>

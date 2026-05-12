@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::section})}">
+<section>
+
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h3 mb-1">Центр мониторинга ИБ</h1>
+            <p class="text-soc-muted mb-0">
+                Добро пожаловать, <span class="fw-semibold text-warning" th:text="${username}">user</span>.
+                <span class="ms-2"><span class="live-dot"></span>Корреляционный движок активен</span>
+            </p>
+        </div>
+        <div class="text-end">
+            <div class="text-soc-muted small">Сегодня</div>
+            <div class="fw-semibold" id="currentTime">—</div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card critical">
+                <i class="bi bi-exclamation-octagon stat-icon"></i>
+                <div class="stat-label">Открытых инцидентов</div>
+                <div class="stat-value" th:text="${openIncidents}">0</div>
+                <div class="text-soc-muted small">status = NEW</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card warning">
+                <i class="bi bi-fire stat-icon"></i>
+                <div class="stat-label">High/Critical 24ч</div>
+                <div class="stat-value" th:text="${highSeverity24h}">0</div>
+                <div class="text-soc-muted small">severity ≥ 4</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card info">
+                <i class="bi bi-arrow-repeat stat-icon"></i>
+                <div class="stat-label">В работе</div>
+                <div class="stat-value" th:text="${inProgress}">0</div>
+                <div class="text-soc-muted small">status = IN_PROGRESS</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div th:class="${integrityValid} ? 'stat-card success' : 'stat-card critical'">
+                <i class="bi bi-shield-check stat-icon"></i>
+                <div class="stat-label">Целостность журнала</div>
+                <div class="stat-value" th:text="${integrityValid} ? 'OK' : 'FAIL'">OK</div>
+                <div class="text-soc-muted small">проверено: <span th:text="${integrityChecked}">0</span> зап.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-graph-up"></i> Активность за последние 24 часа</span>
+                    <span class="text-soc-muted small">Всего событий в журнале: <strong th:text="${auditCount}">0</strong></span>
+                </div>
+                <div class="card-body">
+                    <canvas id="activityChart" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <i class="bi bi-list-ul"></i> Топ правил корреляции
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-soc mb-0 small">
+                        <tbody>
+                        <tr><td><span class="sev-badge sev-5">5</span></td><td>BRUTE_FORCE</td><td class="text-soc-muted text-end">T1110</td></tr>
+                        <tr><td><span class="sev-badge sev-5">5</span></td><td>CREDENTIAL_STUFFING</td><td class="text-soc-muted text-end">T1110.004</td></tr>
+                        <tr><td><span class="sev-badge sev-5">5</span></td><td>PRIVILEGE_ESCALATION</td><td class="text-soc-muted text-end">T1098</td></tr>
+                        <tr><td><span class="sev-badge sev-5">5</span></td><td>MFA_BYPASS_ATTEMPT</td><td class="text-soc-muted text-end">T1621</td></tr>
+                        <tr><td><span class="sev-badge sev-5">5</span></td><td>AUDIT_TAMPERING</td><td class="text-soc-muted text-end">T1070</td></tr>
+                        <tr><td><span class="sev-badge sev-4">4</span></td><td>MASS_EXPORT</td><td class="text-soc-muted text-end">T1567</td></tr>
+                        <tr><td><span class="sev-badge sev-3">3</span></td><td>OFF_HOURS_LOGIN</td><td class="text-soc-muted text-end">T1078</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+       <div class="col-md-4">
+            <div class="card h-100"><div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    <i class="bi bi-shield-lock fs-3 text-warning me-2"></i>
+                    <h5 class="mb-0">3-уровневый RBAC</h5>
+                </div>
+                <p class="text-soc-muted mb-0 small">Роли USER / MANAGER / ADMIN с отдельными интерфейсами. Типы учётных записей LOCAL и EXTERNAL — для внешних 2FA обязательна.</p>
+            </div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100"><div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    <i class="bi bi-key fs-3 text-warning me-2"></i>
+                    <h5 class="mb-0">2FA / Argon2</h5>
+                </div>
+                <p class="text-soc-muted mb-0 small">TOTP RFC 6238, backup-коды, Argon2id для паролей. Для EXTERNAL — обязательно.</p>
+            </div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100"><div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    <i class="bi bi-link-45deg fs-3 text-warning me-2"></i>
+                    <h5 class="mb-0">Hash-цепочка</h5>
+                </div>
+                <p class="text-soc-muted mb-0 small">Tamper-evident журнал на SHA-256. Любая модификация рвёт цепочку и порождает инцидент.</p>
+            </div></div>
+        </div>
+    </div>
+
+    <div id="dashboardData"
+         th:attr="data-labels=${chartLabelsJson},
+                  data-audit=${chartAuditJson},
+                  data-incidents=${chartIncidentsJson}"
+         style="display:none;"></div>
+
+    <!-- Скрипты ВНУТРИ section -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script th:inline="none">
+        function tick() {
+            var d = new Date();
+            var f = function (n) { return String(n).padStart(2, '0'); };
+            document.getElementById('currentTime').textContent =
+                f(d.getDate()) + '.' + f(d.getMonth()+1) + '.' + d.getFullYear() + ' ' +
+                f(d.getHours()) + ':' + f(d.getMinutes()) + ':' + f(d.getSeconds());
+        }
+        tick(); setInterval(tick, 1000);
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var dataEl = document.getElementById('dashboardData');
+            var labels = [], audit = [], incidents = [];
+            try {
+                labels = JSON.parse(dataEl.getAttribute('data-labels') || '[]');
+                audit = JSON.parse(dataEl.getAttribute('data-audit') || '[]');
+                incidents = JSON.parse(dataEl.getAttribute('data-incidents') || '[]');
+            } catch (e) { console.error('Failed to parse chart data', e); }
+
+            var ctx = document.getElementById('activityChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'События аудита', data: audit,
+                          borderColor: '#58a6ff', backgroundColor: 'rgba(88, 166, 255, 0.1)',
+                          tension: 0.35, fill: true, borderWidth: 2 },
+                        { label: 'Инциденты', data: incidents,
+                          borderColor: '#ff7a00', backgroundColor: 'rgba(255, 122, 0, 0.15)',
+                          tension: 0.2, fill: true, borderWidth: 2 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { labels: { color: '#8b949e' } } },
+                    scales: {
+                        x: { ticks: { color: '#6e7681' }, grid: { color: '#252d36' } },
+                        y: { ticks: { color: '#6e7681', precision: 0 }, grid: { color: '#252d36' }, beginAtZero: true }
+                    }
+                }
+            });
+        });
+    </script>
+
+</section>
+</html>

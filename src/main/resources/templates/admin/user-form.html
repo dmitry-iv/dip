@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::section})}">
+<section>
+
+    <div class="mb-3">
+        <a th:href="@{/admin/users}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> К списку пользователей
+        </a>
+    </div>
+
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0">
+            <i class="bi bi-person-plus text-warning"></i>
+            <span th:text="${mode == 'create'} ? 'Создание пользователя' : 'Редактирование пользователя'">Создание</span>
+        </h1>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-body">
+
+                    <form th:action="${mode == 'create'} ? @{/admin/users/new} : @{|/admin/users/${userId}/edit|}"
+                          method="post" th:object="${form}">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+
+                        <div class="mb-3">
+                            <label class="form-label">Логин</label>
+                            <input type="text" class="form-control" th:field="*{username}" required/>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" th:field="*{email}"/>
+                        </div>
+
+                        <div class="mb-3" th:if="${mode == 'create'}">
+                            <label class="form-label">Пароль</label>
+                            <input type="password" class="form-control" th:field="*{password}" required/>
+                            <div class="form-text text-soc-muted">
+                                <i class="bi bi-info-circle"></i> Минимум 12 символов, заглавная и строчная буква, цифра и спецсимвол.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Тип учётной записи</label>
+                            <select class="form-select" th:field="*{source}">
+                                <option value="LOCAL">LOCAL — локальный (администратор/тех. учётка)</option>
+                                <option value="EXTERNAL">EXTERNAL — внешний (контрагент, аудитор; 2FA обязательно)</option>
+                            </select>
+                            <div class="form-text text-soc-muted">
+                                <i class="bi bi-info-circle"></i>
+                                Тип <strong>EXTERNAL</strong> для подрядчиков и аудиторов: 2FA обязательна, нельзя отключить.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Срок действия (для EXTERNAL)</label>
+                            <input type="text" class="form-control" th:field="*{expiresAt}" placeholder="2026-12-31T00:00:00Z"/>
+                            <div class="form-text text-soc-muted">Формат ISO-8601. Оставьте пустым для бессрочной учётной записи.</div>
+                        </div>
+
+                        <div class="mb-3" th:if="${mode == 'edit'}">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="enabledChk" th:field="*{enabled}"/>
+                                <label class="form-check-label" for="enabledChk">Учётная запись активна</label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label d-block">Роли</label>
+                            <div th:each="r : ${allRoles}" class="form-check form-check-inline">
+                                <input type="checkbox" name="roles" th:value="${r}" class="form-check-input"
+                                       th:id="'role_' + ${r}"
+                                       th:checked="${form.roles != null and form.roles.contains(r)}"/>
+                                <label class="form-check-label" th:for="'role_' + ${r}" th:text="${r}">USER</label>
+                            </div>
+                        </div>
+
+                        <hr class="border-soc"/>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check2"></i>
+                                <span th:text="${mode == 'create'} ? 'Создать' : 'Сохранить'">Сохранить</span>
+                            </button>
+                            <a th:href="@{/admin/users}" class="btn btn-outline-secondary">Отмена</a>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card">
+                <div class="card-header"><i class="bi bi-info-circle"></i> Подсказки</div>
+                <div class="card-body small text-soc-muted">
+                    <h6 class="text-warning"><i class="bi bi-shield"></i> Роли</h6>
+                    <ul>
+                        <li><strong>USER</strong> — базовый доступ (отчёт, профиль)</li>
+                        <li><strong>MANAGER</strong> — + журнал аудита, инциденты</li>
+                        <li><strong>ADMIN</strong> — полный доступ, управление пользователями</li>
+                    </ul>
+
+                    <h6 class="text-warning mt-3"><i class="bi bi-people"></i> Источники</h6>
+                    <ul class="mb-0">
+                        <li><strong>LOCAL</strong> — пароль хранится в системе (Argon2id)</li>
+                        <li><strong>EXTERNAL</strong> — для подрядчиков, обязательное 2FA, можно задать срок действия</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</section>
+</html>

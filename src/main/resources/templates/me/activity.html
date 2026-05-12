@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::section})}">
+<section>
+
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="bi bi-person-circle text-warning"></i> Моя активность</h1>
+            <p class="text-soc-muted mb-0">
+                Личная страница для пользователя
+                <span class="fw-semibold text-warning" th:text="${user.username}">username</span>
+            </p>
+        </div>
+        <a th:href="@{/profile}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-gear"></i> Настройки профиля
+        </a>
+    </div>
+
+    <!-- KPI -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card info">
+                <i class="bi bi-box-arrow-in-right stat-icon"></i>
+                <div class="stat-label">Последний вход</div>
+                <div class="fw-semibold mt-2"
+                     th:text="${stats != null and stats.lastLoginAt() != null ? #temporals.format(stats.lastLoginAt(), 'dd.MM.yyyy HH:mm') : '—'}">—</div>
+                <div class="text-soc-muted small font-monospace"
+                     th:text="${stats != null and stats.lastLoginIp() != null ? stats.lastLoginIp() : '—'}">—</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card success">
+                <i class="bi bi-shield-check stat-icon"></i>
+                <div class="stat-label">Входов за 30д</div>
+                <div class="stat-value" th:text="${stats != null ? stats.loginsLast30d() : 0}">0</div>
+                <div class="text-soc-muted small">успешных</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div th:class="${stats != null and stats.failedLoginsLast30d() > 5} ? 'stat-card critical' : 'stat-card warning'">
+                <i class="bi bi-shield-exclamation stat-icon"></i>
+                <div class="stat-label">Неудачных попыток</div>
+                <div class="stat-value" th:text="${stats != null ? stats.failedLoginsLast30d() : 0}">0</div>
+                <div class="text-soc-muted small">за 30 дней</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div th:class="${user.totpEnabled} ? 'stat-card success' : 'stat-card warning'">
+                <i th:class="${user.totpEnabled} ? 'bi bi-shield-lock-fill stat-icon' : 'bi bi-shield-slash stat-icon'"></i>
+                <div class="stat-label">2FA</div>
+                <div class="fw-semibold fs-5 mt-2"
+                     th:text="${user.totpEnabled} ? 'Включена' : 'Отключена'">—</div>
+                <div class="text-soc-muted small">
+                    <span th:if="${user.totpEnabled}">защищено TOTP</span>
+                    <a th:if="${!user.totpEnabled}" th:href="@{/profile/2fa/setup}" class="text-warning">включить →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Алерт о подозрительной активности -->
+    <div th:if="${stats != null and stats.incidentsAboutMeLast30d() > 0}" class="alert alert-soc-danger mb-4">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-exclamation-triangle fs-3 me-3"></i>
+            <div>
+                <h5 class="mb-1">Подозрительная активность по вашему аккаунту</h5>
+                <p class="mb-2 small">
+                    За последние 30 дней системой мониторинга
+                    зафиксировано <strong th:text="${stats.incidentsAboutMeLast30d()}">N</strong>
+                    подозрительных событий с вашей учётной записью.
+                    Если это были не вы — немедленно
+                    <a th:href="@{/profile}" class="text-warning fw-bold">смените пароль</a>
+                    и обратитесь в службу безопасности.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+
+        <!-- Последние входы -->
+        <div class="col-lg-7">
+            <div class="card h-100">
+                <div class="card-header"><i class="bi bi-clock-history"></i> Последние входы</div>
+                <div class="table-responsive">
+                    <table class="table table-soc mb-0 small">
+                        <thead>
+                        <tr>
+                            <th style="width: 130px;">Время</th>
+                            <th>Действие</th>
+                            <th style="width: 80px;">Результат</th>
+                            <th style="width: 130px;">IP</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="row : ${recentLogins}">
+                            <td class="text-soc-muted small font-monospace"
+                                th:text="${row[0] != null ? #temporals.format(row[0], 'dd.MM HH:mm:ss') : '—'}">01.01 12:00</td>
+                            <td><code th:text="${row[1]}">LOGIN_SUCCESS</code></td>
+                            <td>
+                                <span th:if="${row[2] == 'SUCCESS'}" class="text-success small">
+                                    <i class="bi bi-check-circle"></i> OK
+                                </span>
+                                <span th:if="${row[2] == 'FAIL'}" class="text-danger small">
+                                    <i class="bi bi-x-circle"></i> FAIL
+                                </span>
+                                <span th:if="${row[2] != 'SUCCESS' and row[2] != 'FAIL'}" class="text-info small"
+                                      th:text="${row[2]}">INFO</span>
+                            </td>
+                            <td><code class="small font-monospace" th:text="${row[3]} ?: '—'">—</code></td>
+                        </tr>
+                        <tr th:if="${recentLogins == null or recentLogins.isEmpty()}">
+                            <td colspan="4" class="text-center text-soc-muted py-4">
+                                <i class="bi bi-inbox"></i> Записей пока нет
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Безопасность аккаунта -->
+        <div class="col-lg-5">
+            <div class="card h-100">
+                <div class="card-header"><i class="bi bi-shield-lock"></i> Безопасность аккаунта</div>
+                <div class="card-body">
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-soc-muted small">Двухфакторная аутентификация</span>
+                            <span th:if="${user.totpEnabled}" class="badge bg-success">Включена</span>
+                            <span th:if="${!user.totpEnabled}" class="badge bg-warning text-dark">Отключена</span>
+                        </div>
+                        <a th:if="${!user.totpEnabled}" th:href="@{/profile/2fa/setup}"
+                           class="btn btn-sm btn-outline-warning mt-2">
+                            <i class="bi bi-shield-plus"></i> Настроить 2FA
+                        </a>
+                    </div>
+
+                    <hr class="border-soc"/>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-soc-muted small">Тип учётной записи</span>
+                            <span class="cat-badge"
+                                  th:text="${user.source != null ? user.source.name() : 'LOCAL'}">LOCAL</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-soc-muted small">Email</span>
+                            <span th:text="${user.email} ?: '—'">—</span>
+                        </div>
+                    </div>
+
+                    <hr class="border-soc"/>
+
+                    <a th:href="@{/profile}" class="btn btn-primary w-100">
+                        <i class="bi bi-key"></i> Сменить пароль
+                    </a>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Инциденты по моему аккаунту -->
+    <div class="card mt-4" th:if="${myIncidents != null and !myIncidents.isEmpty()}">
+        <div class="card-header"><i class="bi bi-exclamation-triangle"></i> История событий безопасности с моим аккаунтом</div>
+        <div class="table-responsive">
+            <table class="table table-soc mb-0 small">
+                <thead>
+                <tr>
+                    <th style="width: 130px;">Время</th>
+                    <th style="width: 60px;">Sev</th>
+                    <th>Тип события</th>
+                    <th>Описание</th>
+                    <th style="width: 110px;">Статус</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="i : ${myIncidents}">
+                    <td class="text-soc-muted small font-monospace"
+                        th:text="${#temporals.format(i.createdAt, 'dd.MM.yyyy HH:mm')}">01.01 12:00</td>
+                    <td><span th:class="'sev-badge sev-' + ${i.severity}" th:text="${i.severity}">3</span></td>
+                    <td><code th:text="${i.ruleName}">RULE</code></td>
+                    <td class="small" th:text="${#strings.abbreviate(i.description, 100)}">desc</td>
+                    <td>
+                        <span th:class="'status-pill status-' + ${i.status}" th:text="${i.status}">NEW</span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer small text-soc-muted">
+            <i class="bi bi-info-circle"></i>
+            Если вы видите события которые не совершали — немедленно смените пароль и обратитесь в службу безопасности.
+        </div>
+    </div>
+
+</section>
+</html>

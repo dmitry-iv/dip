@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::section})}">
+<section>
+
+    <div class="mb-3">
+        <a th:href="@{/profile}" class="btn btn-sm btn-outline-secondary"
+           th:if="${!mfaMandatory}">
+            <i class="bi bi-arrow-left"></i> К профилю
+        </a>
+    </div>
+
+    <div class="mb-4">
+        <h1 class="h3"><i class="bi bi-shield-plus text-warning"></i> Настройка двухфакторной аутентификации</h1>
+        <p class="text-soc-muted mb-0">
+            Для аккаунта <code class="text-warning" th:text="${username}">user</code>
+        </p>
+    </div>
+
+    <div th:if="${mfaMandatory}" class="alert alert-soc-danger mb-4">
+        <i class="bi bi-exclamation-triangle fs-4"></i>
+        <strong>Двухфакторная аутентификация обязательна для вашей учётной записи</strong>
+        <p class="mb-0 mt-2 small">
+            Учётная запись помечена как <strong>EXTERNAL</strong> (внешний пользователь, контрагент или аудитор).
+            Согласно политике ИБ, доступ к системе возможен только при включённой 2FA.
+            Настройте её сейчас, чтобы продолжить работу.
+            Отключить 2FA впоследствии будет нельзя.
+        </p>
+    </div>
+
+    <div th:if="${setupError}" class="alert alert-soc-danger">
+        <i class="bi bi-x-circle"></i> <span th:text="${setupError}">Ошибка</span>
+    </div>
+
+    <div class="row g-4">
+
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <span class="badge bg-warning text-dark me-2">1</span>
+                    Отсканируйте QR-код
+                </div>
+                <div class="card-body text-center">
+                    <p class="text-soc-muted small mb-3">
+                        Откройте Google Authenticator, Microsoft Authenticator,
+                        Authy или другое TOTP-приложение и отсканируйте этот код.
+                    </p>
+
+                    <img th:src="${qrCodeDataUri}" alt="QR Code"
+                         style="max-width: 240px; background: white; padding: 12px; border-radius: 8px;"/>
+
+                    <div class="mt-3 small text-soc-muted">
+                        Не получается отсканировать? Введите ключ вручную:
+                    </div>
+                    <code class="d-block mt-1 p-2" style="word-break: break-all;"
+                          th:text="${secret}">SECRET</code>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <span class="badge bg-warning text-dark me-2">2</span>
+                    Введите код из приложения
+                </div>
+                <div class="card-body">
+
+                    <form th:action="@{/profile/2fa/confirm}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                        <input type="hidden" name="secret" th:value="${secret}"/>
+
+                        <div class="mb-3">
+                            <label class="form-label">Шестизначный код</label>
+                            <input type="text" name="code" class="form-control text-center"
+                                   maxlength="6" required autofocus
+                                   placeholder="000000"
+                                   pattern="[0-9]{6}"
+                                   style="font-size: 1.6rem; letter-spacing: 0.5rem; font-family: monospace;"/>
+                            <div class="form-text text-soc-muted">
+                                <i class="bi bi-info-circle"></i> Код обновляется каждые 30 секунд
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-check-lg"></i> Подтвердить и включить 2FA
+                        </button>
+                    </form>
+
+                    <hr class="border-soc"/>
+
+                    <div class="small text-soc-muted">
+                        <strong class="text-warning"><i class="bi bi-info-circle"></i> Что произойдёт дальше</strong>
+                        <ul class="mb-0 mt-1">
+                            <li>2FA активируется для вашего аккаунта</li>
+                            <li>Вы получите 10 одноразовых backup-кодов</li>
+                            <li>При следующем входе потребуется код из приложения</li>
+                            <li th:if="${mfaMandatory}" class="text-warning">
+                                <strong>Отключить 2FA для вашей учётной записи будет нельзя</strong>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</section>
+</html>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::section})}">
+<section>
+
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="bi bi-envelope-gear text-warning"></i> Настройка алертов и SMTP</h1>
+            <p class="text-soc-muted mb-0">
+                Параметры почтового сервера, отправителя и получателей уведомлений об инцидентах.
+                Пароль шифруется AES-GCM и хранится в БД в зашифрованном виде.
+            </p>
+        </div>
+        <a th:href="@{/admin/users}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> К админке
+        </a>
+    </div>
+
+    <div th:if="${savedOk}" class="alert alert-soc-success">
+        <i class="bi bi-check-circle"></i> <span th:text="${savedOk}">OK</span>
+    </div>
+    <div th:if="${errorMsg}" class="alert alert-soc-danger">
+        <i class="bi bi-x-circle"></i> <span th:text="${errorMsg}">Ошибка</span>
+    </div>
+
+    <form th:action="@{/admin/alert-settings/save}" th:object="${settings}" method="post">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+        <div class="row g-3">
+
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header"><i class="bi bi-server"></i> SMTP-сервер</div>
+                    <div class="card-body">
+
+                        <div class="mb-3">
+                            <label class="form-label">Адрес сервера</label>
+                            <input type="text" class="form-control" th:field="*{smtpHost}" placeholder="smtp.yandex.ru"/>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Порт</label>
+                            <input type="number" class="form-control" th:field="*{smtpPort}" placeholder="587"/>
+                            <div class="form-text text-soc-muted">
+                                Используется STARTTLS. Стандартный порт: 587.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Логин (email-аккаунт)</label>
+                            <input type="text" class="form-control" th:field="*{smtpUsername}"
+                                   placeholder="user@yandex.ru" autocomplete="off"/>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Пароль приложения</label>
+                            <input type="password" class="form-control" th:field="*{smtpPassword}"
+                                   th:placeholder="${hasPassword} ? '•••••••••••••••• (оставьте пустым чтобы не менять)' : 'Пароль приложения'"
+                                   autocomplete="new-password"/>
+                            <div class="form-text text-soc-muted">
+                                Для Яндекса: <a href="https://id.yandex.ru/security/app-passwords"
+                                                target="_blank" class="text-warning">id.yandex.ru/security/app-passwords</a>,
+                                тип «Почта». Пароль сохраняется в БД зашифрованным AES-GCM.
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header"><i class="bi bi-people"></i> Получатели и параметры</div>
+                    <div class="card-body">
+
+                        <div class="mb-3">
+                            <label class="form-label">Адрес отправителя (поле From:)</label>
+                            <input type="text" class="form-control" th:field="*{senderAddress}"
+                                   placeholder="user@yandex.ru"/>
+                            <div class="form-text text-soc-muted">
+                                Большинство SMTP-серверов требуют чтобы From совпадал с логином.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Получатели (через запятую или точку с запятой)</label>
+                            <textarea class="form-control" rows="3" th:field="*{recipientsCsv}"
+                                      placeholder="soc@example.com, security-lead@example.com"></textarea>
+                            <div class="form-text text-soc-muted">
+                                Можно несколько адресов. Письма уйдут на каждый.
+                            </div>
+                        </div>
+
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label">Min. severity</label>
+                                <select class="form-select" th:field="*{minSeverity}">
+                                    <option value="1">1 — Info</option>
+                                    <option value="2">2 — Low</option>
+                                    <option value="3">3 — Medium</option>
+                                    <option value="4">4 — High</option>
+                                    <option value="5">5 — Critical</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Throttle, сек</label>
+                                <input type="number" class="form-control" th:field="*{throttleSeconds}"/>
+                            </div>
+                        </div>
+
+                        <div class="form-check form-switch mt-3">
+                            <input class="form-check-input" type="checkbox" id="enabledSwitch" th:field="*{enabled}"/>
+                            <label class="form-check-label" for="enabledSwitch">
+                                <strong>Включить отправку алертов</strong>
+                            </label>
+                            <div class="form-text text-soc-muted">
+                                Когда выключено — инциденты создаются как обычно, но письма не отправляются.
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-body d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check2"></i> Сохранить
+                </button>
+                <a th:href="@{/admin/alert-settings}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-clockwise"></i> Отменить
+                </a>
+            </div>
+        </div>
+    </form>
+
+    <div class="card mt-3">
+        <div class="card-header"><i class="bi bi-tools"></i> Тестирование</div>
+        <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+
+            <form th:action="@{/admin/alert-settings/test-connection}" method="post" class="d-inline">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button type="submit" class="btn btn-outline-warning">
+                    <i class="bi bi-plug"></i> Проверить подключение к SMTP
+                </button>
+            </form>
+
+            <form th:action="@{/admin/alert-settings/test-send}" method="post" class="d-inline">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button type="submit" class="btn btn-outline-success">
+                    <i class="bi bi-send"></i> Отправить тестовое письмо
+                </button>
+            </form>
+
+            <span class="text-soc-muted small ms-auto">
+                Тесты используют сохранённые настройки. Сначала сохраните, потом нажимайте.
+            </span>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header"><i class="bi bi-info-circle"></i> Подсказка по Яндекс-почте</div>
+        <div class="card-body small text-soc-muted">
+            <ol class="mb-0">
+                <li>Создайте пароль приложения на
+                    <a href="https://id.yandex.ru/security/app-passwords" target="_blank" class="text-warning">id.yandex.ru/security/app-passwords</a>,
+                    тип <strong>«Почта»</strong>.</li>
+                <li>В <a href="https://mail.yandex.ru/?#setup/client" target="_blank" class="text-warning">настройках почтовых программ</a>
+                    включите <strong>«С сервера imap.yandex.ru по протоколу IMAP»</strong> и сохраните.</li>
+                <li>Заполните форму выше, нажмите <strong>Сохранить</strong>, затем <strong>Проверить подключение</strong>.</li>
+                <li>Если подключение OK — нажмите <strong>Отправить тестовое письмо</strong>.</li>
+            </ol>
+        </div>
+    </div>
+
+</section>
+</html>

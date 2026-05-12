@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::section})}">
+<section>
+
+    <div class="mb-4">
+        <div class="alert alert-soc-success">
+            <i class="bi bi-shield-check fs-4"></i>
+            <strong>2FA успешно активирована!</strong>
+            При следующем входе потребуется код из приложения-аутентификатора.
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <i class="bi bi-key text-warning"></i> Резервные коды
+        </div>
+        <div class="card-body">
+
+            <div class="alert alert-soc-warning">
+                <i class="bi bi-exclamation-triangle"></i>
+                <strong>Важно.</strong> Сохраните эти коды в надёжном месте — например, в менеджере паролей.
+                Они нужны если вы потеряете доступ к приложению-аутентификатору
+                (потерялся телефон, переустановили приложение).
+                Каждый код можно использовать <strong>только один раз</strong>.
+                После закрытия этой страницы коды повторно не показываются.
+            </div>
+
+            <div class="row g-2 mb-4">
+                <div th:each="code : ${backupCodes}" class="col-md-6 col-lg-4">
+                    <code class="d-block p-3 text-center" style="font-size: 1.1rem; letter-spacing: 1px;"
+                          th:text="${code}">XXXX-XXXX</code>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <a th:href="@{/profile}" class="btn btn-primary">
+                    <i class="bi bi-check"></i> Я сохранил коды, продолжить
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header"><i class="bi bi-info-circle"></i> Что делать с резервными кодами</div>
+        <div class="card-body small text-soc-muted">
+            <ul class="mb-0">
+                <li>Распечатайте и положите в безопасное место</li>
+                <li>Сохраните в менеджер паролей (KeePass, Bitwarden, 1Password)</li>
+                <li>Не отправляйте по почте и не храните в облачных заметках</li>
+                <li>При входе вместо TOTP-кода введите один из этих кодов — он будет израсходован и больше не сработает</li>
+            </ul>
+        </div>
+    </div>
+
+</section>
+</html>

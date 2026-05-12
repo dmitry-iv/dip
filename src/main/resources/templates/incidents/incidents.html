@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Инцидент</title>
+</head>
+<body>
+<h1>Инцидент: <span th:text="${incident.ruleName}"></span></h1>
+
+<dl>
+    <dt>ID</dt><dd th:text="${incident.id}"></dd>
+    <dt>Время</dt><dd th:text="${incident.createdAt}"></dd>
+    <dt>Severity</dt><dd th:text="${incident.severity}"></dd>
+    <dt>Статус</dt><dd th:text="${incident.status}"></dd>
+    <dt>MITRE</dt><dd th:text="${incident.mitreTechnique}"></dd>
+    <dt>Пользователь</dt><dd th:text="${incident.affectedUser}"></dd>
+    <dt>Source IP</dt><dd th:text="${incident.sourceIp}"></dd>
+    <dt>Описание</dt><dd th:text="${incident.description}"></dd>
+    <dt>Связанные события</dt><dd th:text="${incident.relatedLogIds}"></dd>
+</dl>
+
+<h2>Изменить статус</h2>
+<form th:action="@{|/incidents/${incident.id}/status|}" method="post">
+    <select name="status">
+        <option value="ACK">Принят (ACK)</option>
+        <option value="IN_PROGRESS">В работе</option>
+        <option value="RESOLVED">Решён</option>
+        <option value="FALSE_POSITIVE">Ложное срабатывание</option>
+    </select>
+    <input type="text" name="notes" placeholder="Комментарий" size="60"/>
+    <button type="submit">Сохранить</button>
+</form>
+
+<p><a href="/incidents">← К списку инцидентов</a></p>
+</body>
+</html>

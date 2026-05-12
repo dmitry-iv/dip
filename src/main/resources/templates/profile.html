@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::section})}">
+<section>
+
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="bi bi-person-circle text-warning"></i> Профиль пользователя</h1>
+            <p class="text-soc-muted mb-0">Личные данные, безопасность аккаунта и двухфакторная аутентификация.</p>
+        </div>
+    </div>
+
+    <div th:if="${passwordSuccess}" class="alert alert-soc-success">
+        <i class="bi bi-check-circle"></i> <span th:text="${passwordSuccess}">Пароль успешно изменён</span>
+    </div>
+    <div th:if="${twoFaEnabled}" class="alert alert-soc-success">
+        <i class="bi bi-shield-check"></i> 2FA успешно включена.
+    </div>
+    <div th:if="${disabled}" class="alert alert-soc-warning">
+        <i class="bi bi-shield-slash"></i> 2FA отключена.
+    </div>
+    <div th:if="${disableError}" class="alert alert-soc-danger">
+        <i class="bi bi-x-circle"></i> <span th:text="${disableError}">Ошибка</span>
+    </div>
+
+    <div class="row g-3">
+
+        <div class="col-lg-5">
+            <div class="card mb-3">
+                <div class="card-header"><i class="bi bi-card-text"></i> Основные сведения</div>
+                <div class="card-body">
+                    <div th:if="${user == null}" class="text-soc-muted">Не удалось загрузить профиль.</div>
+
+                    <dl th:if="${user != null}" class="row mb-0 small">
+                        <dt class="col-5 text-soc-muted">Логин</dt>
+                        <dd class="col-7"><code th:text="${user.username}">user</code></dd>
+
+                        <dt class="col-5 text-soc-muted">Email</dt>
+                        <dd class="col-7" th:text="${user.email} ?: '—'">—</dd>
+
+                        <dt class="col-5 text-soc-muted">Активна</dt>
+                        <dd class="col-7">
+                            <span th:if="${user.enabled}" class="badge bg-success"><i class="bi bi-check"></i> Да</span>
+                            <span th:unless="${user.enabled}" class="badge bg-secondary">Нет</span>
+                        </dd>
+
+                        <dt class="col-5 text-soc-muted">Источник</dt>
+                        <dd class="col-7">
+                            <span th:if="${user.source != null and user.source.name() == 'LOCAL'}" class="cat-badge">LOCAL</span>
+                            <span th:if="${user.source != null and user.source.name() == 'EXTERNAL'}" class="cat-badge" style="color: var(--accent);">EXTERNAL</span>
+                            <span th:if="${user.source == null}" class="cat-badge">LOCAL</span>
+                        </dd>
+
+                        <dt class="col-5 text-soc-muted">Неудачных попыток</dt>
+                        <dd class="col-7" th:text="${user.failedLoginAttempts}">0</dd>
+
+                        <dt class="col-5 text-soc-muted">Заблокирован до</dt>
+                        <dd class="col-7" th:text="${user.lockUntil} ?: '—'">—</dd>
+
+                        <dt class="col-5 text-soc-muted" th:if="${user.lastLoginAt}">Последний вход</dt>
+                        <dd class="col-7" th:if="${user.lastLoginAt}" th:text="${#temporals.format(user.lastLoginAt, 'dd.MM.yyyy HH:mm')}">—</dd>
+
+                        <dt class="col-5 text-soc-muted" th:if="${user.lastLoginIp}">с IP</dt>
+                        <dd class="col-7" th:if="${user.lastLoginIp}"><code class="small" th:text="${user.lastLoginIp}">—</code></dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-shield-lock"></i> Двухфакторная аутентификация (2FA)
+                </div>
+                <div class="card-body">
+
+                    <div th:if="${user != null and user.totpEnabled}" class="text-center">
+                        <div class="mb-3">
+                            <i class="bi bi-shield-check" style="font-size: 3rem; color: var(--info);"></i>
+                        </div>
+                        <h5 class="text-success">2FA включена</h5>
+                        <p class="text-soc-muted small">
+                            Вход в систему требует одноразовый код из приложения-аутентификатора.
+                        </p>
+
+                        <div th:if="${user.source != null and user.source.name() == 'EXTERNAL'}" class="alert alert-soc-warning small">
+                            <i class="bi bi-info-circle"></i> Для внешних пользователей 2FA обязательна и не может быть отключена.
+                        </div>
+
+                        <form th:if="${user.source == null or user.source.name() != 'EXTERNAL'}"
+                              th:action="@{/profile/2fa/disable}" method="post" class="d-inline"
+                              onsubmit="return confirm('Отключить двухфакторную аутентификацию?');">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                <i class="bi bi-shield-slash"></i> Отключить 2FA
+                            </button>
+                        </form>
+                    </div>
+
+                    <div th:if="${user != null and !user.totpEnabled}">
+                        <div class="d-flex align-items-start">
+                            <i class="bi bi-shield-exclamation me-3 mt-1" style="font-size: 1.6rem; color: var(--accent);"></i>
+                            <div class="flex-grow-1">
+                                <strong>2FA не настроена</strong>
+                                <p class="text-soc-muted small mb-2">
+                                    Рекомендуется включить двухфакторную аутентификацию.
+                                    Это защитит аккаунт даже если пароль скомпрометирован.
+                                </p>
+                                <a th:href="@{/profile/2fa/setup}" class="btn btn-warning btn-sm">
+                                    <i class="bi bi-shield-plus"></i> Включить 2FA
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-header"><i class="bi bi-key"></i> Смена пароля</div>
+                <div class="card-body">
+
+                    <form th:action="@{/profile/password}" th:object="${passwordForm}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+                        <div class="mb-3">
+                            <label class="form-label">Текущий пароль</label>
+                            <input type="password" class="form-control" th:field="*{currentPassword}" autocomplete="current-password"/>
+                            <div class="text-danger small mt-1" th:if="${#fields.hasErrors('currentPassword')}" th:errors="*{currentPassword}"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Новый пароль</label>
+                            <input type="password" class="form-control" th:field="*{newPassword}" autocomplete="new-password"/>
+                            <div class="text-danger small mt-1" th:if="${#fields.hasErrors('newPassword')}" th:errors="*{newPassword}"></div>
+                            <div class="text-soc-muted small mt-1">
+                                <i class="bi bi-info-circle"></i> Минимум 12 символов, заглавная и строчная буква, цифра и спецсимвол.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Подтверждение нового пароля</label>
+                            <input type="password" class="form-control" th:field="*{confirmPassword}" autocomplete="new-password"/>
+                            <div class="text-danger small mt-1" th:if="${#fields.hasErrors('confirmPassword')}" th:errors="*{confirmPassword}"></div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check2"></i> Обновить пароль
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header"><i class="bi bi-info-circle"></i> Безопасность аккаунта</div>
+                <div class="card-body small text-soc-muted">
+                    <ul class="mb-0">
+                        <li>Пароли хешируются <strong>Argon2id</strong> — современный криптографический KDF.</li>
+                        <li>После 5 неудачных попыток входа аккаунт автоматически блокируется на 15 минут.</li>
+                        <li>Все действия с аккаунтом фиксируются в журнале аудита и защищены hash-цепочкой.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</section>
+</html>
